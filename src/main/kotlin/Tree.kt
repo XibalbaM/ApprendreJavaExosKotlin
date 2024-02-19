@@ -1,6 +1,28 @@
 package fr.xibalba.apprendreJavaExos
 
-data class Tree<T>(val content: MutableList<TreePart<T>>, val root: TreePart.Root<T>)
+open class Tree<T>(val content: MutableList<TreePart<T>>) {
+    fun getChildren(parent: TreePart<T>): List<TreePart<T>> {
+        return content.filter { it.parents.contains(parent) }
+    }
+
+    fun add(content: T): TreePart<T> {
+        if (content in this.content.map { it.content })
+            throw IllegalArgumentException("This content is already in the tree")
+        val branch = TreePart(content, mutableListOf())
+        this.content += branch
+        return branch
+    }
+
+    fun addParents(child: TreePart<T>, parents: List<TreePart<T>>) {
+        child.parents.addAll(parents)
+    }
+
+    fun addChildren(parent: TreePart<T>, children: List<TreePart<T>>) {
+        for (child in children) {
+            child.parents.add(parent)
+        }
+    }
+}
 
 fun <T> Tree(builder: TreeBuilder<T>.() -> Unit): Tree<T> {
     val treeBuilder = TreeBuilder<T>()
@@ -10,40 +32,40 @@ fun <T> Tree(builder: TreeBuilder<T>.() -> Unit): Tree<T> {
 
 class TreeBuilder<T> {
     private val content = mutableListOf<TreePart<T>>()
-    var root: TreePart.Root<T>? = null
 
-    fun root(content: T) {
-        root = TreePart.Root(content)
-    }
-
-    fun branch(content: T, parent: TreePart<T>): TreePart.Branch<T> {
-        val branch = TreePart.Branch(content, parent)
+    fun append(content: T): TreePart<T> {
+        val branch = TreePart(content, mutableListOf())
         this.content += branch
         return branch
     }
 
-    fun leaf(content: T, parent: TreePart<T>): TreePart.Leaf<T> {
-        val leaf = TreePart.Leaf(content, parent)
-        this.content += leaf
-        return leaf
+    fun append(content: T, parents: List<TreePart<T>>): TreePart<T> {
+        val branch = TreePart(content, parents.toMutableList())
+        this.content += branch
+        return branch
+    }
+
+    fun addParents(child: TreePart<T>, parents: List<TreePart<T>>) {
+        child.parents.addAll(parents)
+    }
+
+    fun addChildren(parent: TreePart<T>, children: List<TreePart<T>>) {
+        for (child in children) {
+            child.parents.add(parent)
+        }
     }
 
     fun build(): Tree<T> {
-        assert(root != null) { "Root is not defined" }
-        return Tree(content, root!!)
+        return Tree(content)
     }
 }
 
-sealed class TreePart<T>(val content: T) {
-    class Branch<T>(content: T, val parent: TreePart<T>) : TreePart<T>(content)
-    class Leaf<T>(content: T, val parent: TreePart<T>) : TreePart<T>(content)
-    class Root<T>(content: T) : TreePart<T>(content)
-
-    fun getParentOfNull(): TreePart<T>? {
-        return when (this) {
-            is Branch -> this.parent
-            is Leaf -> this.parent
-            is Root -> null
+data class TreePart<T>(val content: T, val parents: MutableList<TreePart<T>>) {
+    override fun toString(): String {
+        var result = "$content"
+        for (parent in parents) {
+            result += "\n <- $parent"
         }
+        return result
     }
 }
